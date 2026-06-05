@@ -37,3 +37,7 @@ build/
 
 ### Mac OS ###
 .DS_Store
+
+
+comparison_details.csv
+comparison_summary.csv
