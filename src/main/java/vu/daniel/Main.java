@@ -10,7 +10,7 @@ import java.io.PrintWriter;
 import java.util.*;
 
 import vu.daniel.Methods.*;
-
+import vu.daniel.PathNames;
 
 
 public class Main {
@@ -29,9 +29,10 @@ public class Main {
     }
 
     static void main() throws IOException {
-        //IDs of ontologies to be compared
+        PathNames paths = new PathNames();
 
-        ArrayList<String> ontIds = Methods.extractOntIDs("/Users/daniel/Desktop/BP/el/instantiation/fileorder.txt");
+        //IDs of ontologies to be compared
+        ArrayList<String> ontIds = Methods.extractOntIDs(paths.getOntologyIDsPath()+"fileorder.txt");
 
 
         //set threshold for comparison
@@ -51,8 +52,8 @@ public class Main {
 
             for(String id: ontIds) {
                 try {
-                    String originalPath = "/Users/daniel/Desktop/BP/0Original_ontologies/" + id;
-                    String clusteredPath = "/Users/daniel/Desktop/BP/0Clustering-Results-BCK/experiment_results/results_ORE_corpus/Clustering_results/"+id+".clustering.owl";
+                    String originalPath = paths.getOriginalPath() + id;
+                    String clusteredPath = paths.getClusteredPath()+id+".clustering.owl";
 
                     OWLOntologyManager manager = Methods.loadManager();
                     OWLReasonerFactory factory = Methods.loadReasonerFactory();
