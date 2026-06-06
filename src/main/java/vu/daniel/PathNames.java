@@ -16,24 +16,12 @@ public class PathNames {
         return ontologyIDsPath;
     }
 
-    public void setOntologyIDsPath(String ontologyIDsPath) {
-        this.ontologyIDsPath = ontologyIDsPath;
-    }
-
     public String getOriginalPath() {
         return originalPath;
     }
 
-    public void setOriginalPath(String originalPath) {
-        this.originalPath = originalPath;
-    }
-
     public String getClusteredPath() {
         return clusteredPath;
-    }
-
-    public void setClusteredPath(String clusteredPath) {
-        this.clusteredPath = clusteredPath;
     }
 }
 
