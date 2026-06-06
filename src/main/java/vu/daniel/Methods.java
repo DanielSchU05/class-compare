@@ -111,10 +111,10 @@ public class Methods {
         Set<OWLNamedIndividual> intersection = new HashSet<>(individuals1);
         intersection.retainAll(individuals2);
 
-        //|AuB| = |A| + |B| - |A n B|
-        int union = (individuals1.size() + individuals2.size()) - intersection.size();
+        Set<OWLNamedIndividual> union = new HashSet<>(individuals1);
+        intersection.addAll(individuals2);
 
-        return (double) intersection.size() / union;
+        return (double) intersection.size() / union.size();
     }
 
     static Main.ComparisonResults compareOntologies(
