@@ -97,6 +97,12 @@ public class Methods {
     }
 
 
+    /**
+     * Calculate the Jaccard index (intersection over union)
+     * @param individuals1 first set of individuals
+     * @param individuals2 second set of individuals
+     * @return Jaccard index
+     */
     static double calculateOverlap(Set<OWLNamedIndividual> individuals1, Set<OWLNamedIndividual> individuals2) {
         if (individuals1.isEmpty() && individuals2.isEmpty()) {
             return -1.0; // if both sets are empty, flag as -1
@@ -105,10 +111,10 @@ public class Methods {
         Set<OWLNamedIndividual> intersection = new HashSet<>(individuals1);
         intersection.retainAll(individuals2);
 
-        Set<OWLNamedIndividual> union = new HashSet<>(individuals1);
-        union.addAll(individuals2);
+        //|AuB| = |A| + |B| - |A n B|
+        int union = (individuals1.size() + individuals2.size()) - intersection.size();
 
-        return (double) intersection.size() / union.size();
+        return (double) intersection.size() / union;
     }
 
     static Main.ComparisonResults compareOntologies(
