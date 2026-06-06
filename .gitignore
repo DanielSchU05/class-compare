@@ -41,3 +41,5 @@ build/
 
 comparison_details.csv
 comparison_summary.csv
+
+src/main/java/vu/daniel/PathNames.java
