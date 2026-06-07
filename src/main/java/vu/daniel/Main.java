@@ -62,9 +62,15 @@ public class Main {
                     File origFileCheck = new File(originalPath);
                     File clustFileCheck = new File(clusteredPath);
 
+                    System.out.println("===================================================");
+                    System.out.println("--- Processing ontology id: "+id+ " ---");
+                    System.out.println("===================================================");
+                    System.out.flush();
+                    Thread.sleep(10);
 
                     if(!origFileCheck.exists()) {
                         System.err.println("Original ontology not found: " + originalPath);
+                        System.err.flush();
                         continue;
                     }
                     if (!clustFileCheck.exists()) {
@@ -72,13 +78,13 @@ public class Main {
                         if (origFileCheck.exists()) {
                             System.err.println("Clustering failed (timed out/invalid axioms)");
                             summaryWriter.printf("%s,-,-,-,-,-\n", id);
+                            System.err.flush();
                             continue;
                         }
+                        System.err.flush();
+                        Thread.sleep(10);
                         continue;
                     }
-
-                    System.out.println("\n--- Processing ontology id: "+id+ " ---");
-
 
                     //load onts
                     System.out.println("Loading ontologies...");
