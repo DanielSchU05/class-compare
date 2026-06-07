@@ -107,12 +107,15 @@ public class Methods {
         if (individuals1.isEmpty() && individuals2.isEmpty()) {
             return -1.0; // if both sets are empty, flag as -1
         }
+        if (individuals1.isEmpty() ^ individuals2.isEmpty()) {
+            return 0.0;
+        }
 
         Set<OWLNamedIndividual> intersection = new HashSet<>(individuals1);
         intersection.retainAll(individuals2);
 
         Set<OWLNamedIndividual> union = new HashSet<>(individuals1);
-        intersection.addAll(individuals2);
+        union.addAll(individuals2);
 
         return (double) intersection.size() / union.size();
     }
