@@ -10,7 +10,6 @@ import java.io.PrintWriter;
 import java.util.*;
 
 import vu.daniel.Methods.*;
-import vu.daniel.PathNames;
 
 
 public class Main {
@@ -20,31 +19,37 @@ public class Main {
         int matches;
         int skipped;
         int belowThreshold;
+        int skippedThing;
+        double avgOverlapMatches;
+        double avgOverlapTotal;
 
-        ComparisonResults(int matches, int skipped, int belowThreshold) {
+        ComparisonResults(int matches, int skipped, int belowThreshold, int skippedThing, double avgOverlapMatches, double avgOverlapTotal) {
             this.matches = matches;
             this.skipped = skipped;
             this.belowThreshold = belowThreshold;
+            this.skippedThing = skippedThing;
+            this.avgOverlapMatches = avgOverlapMatches;
+            this.avgOverlapTotal = avgOverlapTotal;
         }
     }
 
-    static void main() throws IOException {
+    static void main() throws IOException, InterruptedException {
         PathNames paths = new PathNames();
 
         //IDs of ontologies to be compared
         ArrayList<String> ontIds = Methods.extractOntIDs(paths.getOntologyIDsPath()+"fileorder.txt");
-
+        ArrayList<String> usedOntIds = new ArrayList<>(ontIds);
 
         //set threshold for comparison
-        double threshold = 0.5;
+        double threshold = 0.9;
 
         int counter = 0;
 
 
-        try(PrintWriter summaryWriter = new PrintWriter(new FileWriter("comparison_summary.csv"));
-            PrintWriter detailsWriter = new PrintWriter(new FileWriter("comparison_details.csv"))){
+        try(PrintWriter summaryWriter = new PrintWriter(new FileWriter("comparison_summary-"+threshold+".csv"));
+            PrintWriter detailsWriter = new PrintWriter(new FileWriter("comparison_details-"+threshold+".csv"))){
 
-            summaryWriter.println("Ontology_ID,Original_Clusters_Count,Clustered_Clusters_Count,Matches_Found,Skipped_Empty,Below_Threshold");
+            summaryWriter.println("Ontology_ID,Threshold,Original_Clusters_Count,Clustered_Clusters_Count,Matches_Found,Skipped_Empty,Below_Threshold,Skipped_Thing,Avg_Overlap_Matches,Avg_Overlap_Total");
             detailsWriter.println("Ontology_ID,Original_Cluster,Clustered_Cluster,Overlap_Score");
 
 
@@ -55,6 +60,7 @@ public class Main {
                     String originalPath = paths.getOriginalPath() + id;
                     String clusteredPath = paths.getClusteredPath()+id+".clustering.owl";
 
+                    //new managers and factories are created with each loop, otherwise memory leaks/increased memory usage occurs
                     OWLOntologyManager manager = Methods.loadManager();
                     OWLReasonerFactory factory = Methods.loadReasonerFactory();
 
@@ -77,8 +83,9 @@ public class Main {
                         System.err.println("Clustered ontology not found: " + clusteredPath);
                         if (origFileCheck.exists()) {
                             System.err.println("Clustering failed (timed out/invalid axioms)");
-                            summaryWriter.printf("%s,-,-,-,-,-\n", id);
+                            summaryWriter.printf("%s,%.2f,-,-,-,-,-,-,-,-\n", id,threshold);
                             System.err.flush();
+                            usedOntIds.remove(id);
                             continue;
                         }
                         System.err.flush();
@@ -103,8 +110,8 @@ public class Main {
                     //add to summary csv
                     ComparisonResults results = Methods.compareOntologies(id, map_original, map_clusters, threshold, detailsWriter);
 
-                    summaryWriter.printf("%s,%d,%d,%d,%d,%d\n",
-                            id,map_original.size(),map_clusters.size(),results.matches,results.skipped,results.belowThreshold);
+                    summaryWriter.printf("%s,%.2f,%d,%d,%d,%d,%d,%d,%.4f,%.4f\n",
+                            id,threshold,map_original.size(),map_clusters.size(),results.matches,results.skipped,results.belowThreshold,results.skippedThing,results.avgOverlapMatches,results.avgOverlapTotal);
 
                     counter++;
                     System.out.println("Progress: "+ counter + "/"+ ontIds.size());
@@ -115,6 +122,21 @@ public class Main {
 
             }
         }
+
+        try {
+            FileWriter usedOnts = new FileWriter("used_Ontology_IDs.txt");
+            for (String id : usedOntIds) {
+                usedOnts.write(id+"\n");
+            }
+            usedOnts.close();
+            System.out.println("Successfully wrote used ontology IDs.");
+        } catch (IOException e) {
+            System.err.println("Error occurred while printing used ontology IDs");
+            Thread.sleep(10);
+            System.err.flush();
+            e.printStackTrace();
+        }
+
 
         System.out.println("\n--- Finished processing batch ---\n");
 
