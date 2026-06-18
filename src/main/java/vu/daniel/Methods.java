@@ -132,25 +132,39 @@ public class Methods {
         int matchCount = 0;
         int skippedCount = 0;
         int belowThreshold = 0;
+        int skippedThing = 0;
 
+        ArrayList<Double> overlapValuesTotal = new ArrayList<>();
+        ArrayList<Double> overlapValuesMatches = new ArrayList<>();
 
         for (Map.Entry<OWLClass, Set<OWLNamedIndividual>> entry1 : map_original.entrySet()) {
             OWLClass c1 = entry1.getKey();
             Set<OWLNamedIndividual> individuals1 = entry1.getValue();
 
+            if (Objects.equals(c1.getIRI().getShortForm(), "Thing")) {
+                skippedThing++;
+                continue;
+            }
 
             for (Map.Entry<OWLClass,Set<OWLNamedIndividual>> entry2 : map_clustered.entrySet()) {
                 OWLClass c2 = entry2.getKey();
                 Set<OWLNamedIndividual> individuals2 = entry2.getValue();
 
+                if (Objects.equals(c2.getIRI().getShortForm(), "Thing")) {
+                    skippedThing++;
+                    continue;
+                }
 
                 double overlap = calculateOverlap(individuals1, individuals2);
 
+                overlapValuesTotal.add(overlap);
 
                 if (overlap >= threshold) {
                     System.out.printf("Overlap: %.2f \n %s (Ont1) <---> %s (Ont2)\n",
                             overlap, c1.getIRI().getShortForm(), c2.getIRI().getShortForm());
                     matchCount++;
+
+                    overlapValuesMatches.add(overlap);
 
                     //write to detailed CSV
                     detailsWriter.printf("%s,%s,%s,%.4f\n",
@@ -172,11 +186,18 @@ public class Methods {
         }
 
         System.out.println("Skipped (empty): " + skippedCount);
-        System.out.println("Skipped (below threshold: "+ belowThreshold+"\n");
+        System.out.println("Skipped (below threshold): "+ belowThreshold+"\n");
+        System.out.println("Skipped (Thing class): "+ skippedThing+"\n");
+
+        double avgOverlapMatches = calculateAvgOverlap(overlapValuesMatches);
+        System.out.printf("Average Overlap value (matches): %.4f\n", avgOverlapMatches);
+        double avgOverlapTotal = calculateAvgOverlap(overlapValuesTotal);
+        System.out.printf("Average Overlap value (total): %.4f\n", avgOverlapTotal);
+
 
 
         //return object to add to Summary CSV
-        return new Main.ComparisonResults(matchCount,skippedCount,belowThreshold);
+        return new Main.ComparisonResults(matchCount,skippedCount,belowThreshold,skippedThing,avgOverlapMatches,avgOverlapTotal);
     }
 
 
@@ -198,4 +219,11 @@ public class Methods {
         return ontIDs;
     }
 
+    static double calculateAvgOverlap(ArrayList<Double> overlapValues) {
+        double total = 0;
+        for (double value : overlapValues) {
+            total = total + value;
+        }
+        return total/overlapValues.size();
+    }
 }
