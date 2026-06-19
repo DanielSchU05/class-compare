@@ -14,25 +14,6 @@ import vu.daniel.Methods.*;
 
 public class Main {
 
-    //class for formatting experiment results
-    static class ComparisonResults{
-        int matches;
-        int skipped;
-        int belowThreshold;
-        int skippedThing;
-        double avgOverlapMatches;
-        double avgOverlapTotal;
-
-        ComparisonResults(int matches, int skipped, int belowThreshold, int skippedThing, double avgOverlapMatches, double avgOverlapTotal) {
-            this.matches = matches;
-            this.skipped = skipped;
-            this.belowThreshold = belowThreshold;
-            this.skippedThing = skippedThing;
-            this.avgOverlapMatches = avgOverlapMatches;
-            this.avgOverlapTotal = avgOverlapTotal;
-        }
-    }
-
     static void main() throws IOException, InterruptedException {
         PathNames paths = new PathNames();
 
