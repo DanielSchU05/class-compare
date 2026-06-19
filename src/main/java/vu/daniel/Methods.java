@@ -128,12 +128,14 @@ public class Methods {
 
         //instantiate counters for various conditions
         int matchCount = 0;
-        int skippedCount = 0;
+        int skippedClassEmpty = 0;
+        int skippedClusterEmpty = 0;
         int belowThreshold = 0;
-        int skippedThing = 0;
+        int skippedClassThing = 0;
+        int skippedClusterThing = 0;
 
-        ArrayList<Double> overlapValuesTotal = new ArrayList<>();
-        ArrayList<Double> overlapValuesMatches = new ArrayList<>();
+        ArrayList<Double> overlapValuesBestOverlapTotal = new ArrayList<>();
+        ArrayList<Double> overlapValuesBestMatches = new ArrayList<>();
 
 
         //loop through each class of the ontology
@@ -141,50 +143,53 @@ public class Methods {
             OWLClass c1 = entry1.getKey();
             Set<OWLNamedIndividual> individuals1 = entry1.getValue();
 
-            if (Objects.equals(c1.getIRI().getShortForm(), "Thing")) {
-                skippedThing++;
-                continue;
-            }
+
             //if the class of the og ont is empty, skip to the next one, count it
+            if (individuals1.isEmpty()){ skippedClassEmpty++; continue; }
             //if the class of the og ont is the Thing class, skip, count it
+            if (Objects.equals(c1.getIRI().getShortForm(),"Thing")) { skippedClassThing++; continue; }
 
             //for remembering best cluster match for class
+            double bestOverlap = 0;
+            OWLClass bestClusterMatch = null;
+
             //loop over each cluster
             for (Map.Entry<OWLClass,Set<OWLNamedIndividual>> entry2 : map_clustered.entrySet()) {
                 OWLClass c2 = entry2.getKey();
                 Set<OWLNamedIndividual> individuals2 = entry2.getValue();
 
-                if (Objects.equals(c2.getIRI().getShortForm(), "Thing")) {
-                    skippedThing++;
-                    continue;
-                }
                 //if the class of the clustered ont is empty, skip to the next one, count it
+                if (individuals2.isEmpty()) { skippedClusterEmpty++; continue; }
                 //if the class of the clustered ont is the Thing class, skip, count it
+                if (Objects.equals(c2.getIRI().getShortForm(),"Thing")) { skippedClusterThing++; continue; }
 
-                double overlap = calculateOverlap(individuals1, individuals2);
                 //calculate current overlap between the (inferred + asserted) individuals of the class and cluster
+                double currentOverlap = calculateOverlap(individuals1, individuals2);
 
-                overlapValuesTotal.add(overlap);
                 //if the Current overlap is larger than the Best overlap so far
-
-                if (overlap >= threshold) {
-                    System.out.printf("Overlap: %.2f \n %s (Ont1) <---> %s (Ont2)\n",
-                            overlap, c1.getIRI().getShortForm(), c2.getIRI().getShortForm());
-                    matchCount++;
-            //check if the BEST cluster can be counted as a match
-
-                    overlapValuesMatches.add(overlap);
-
-                    //write to detailed CSV
-                    detailsWriter.printf("%s,%s,%s,%.4f\n",
-                            ontID,c1.getIRI().getShortForm(),c2.getIRI().getShortForm(),overlap);
-
-                } else if (overlap == -1.0) {
-                    skippedCount++;
-                } else if (overlap < threshold) {
-                    belowThreshold++;
+                if (currentOverlap > bestOverlap) {
+                    bestOverlap = currentOverlap;
+                    bestClusterMatch = c2;
+                    System.out.println("\u001B[42mbetter match found FLAG"+"\u001B[0m");
                 }
             }
+
+            //check if the BEST cluster can be counted as a match
+            if (bestOverlap >= threshold) {
+                System.out.printf("Overlap: %.2f \n %s (Ont1) <---> %s (Ont2)\n",
+                        bestOverlap, c1.getIRI().getShortForm(), bestClusterMatch.getIRI().getShortForm());
+                matchCount++;
+
+                overlapValuesBestMatches.add(bestOverlap);
+
+                //write to detailed CSV
+                detailsWriter.printf("%s,%s,%s,%.4f\n",
+                        ontID,c1.getIRI().getShortForm(),bestClusterMatch.getIRI().getShortForm(),bestOverlap);
+
+            } else if (bestOverlap < threshold) {
+                belowThreshold++;
+            }
+            overlapValuesBestOverlapTotal.add(bestOverlap);
         }
 
 
@@ -194,20 +199,33 @@ public class Methods {
             System.out.println("No matches found above the threshold.");
         }
 
-        System.out.println("Skipped (empty): " + skippedCount);
+        System.out.println("Skipped (empty class): " + skippedClassEmpty+"\n");
+        System.out.println("Skipped (empty cluster): " + skippedClusterEmpty+"\n");
         System.out.println("Skipped (below threshold): "+ belowThreshold+"\n");
-        System.out.println("Skipped (Thing class): "+ skippedThing+"\n");
+        System.out.println("Skipped (Thing class): "+ skippedClassThing+"\n");
+        System.out.println("Skipped (Thing cluster): "+ skippedClusterThing+"\n");
 
-        double avgOverlapMatches = calculateAvgOverlap(overlapValuesMatches);
+        double avgOverlapMatches = calculateAvgOverlap(overlapValuesBestMatches);
         System.out.printf("Average Overlap value (matches): %.4f\n", avgOverlapMatches);
-        double avgOverlapTotal = calculateAvgOverlap(overlapValuesTotal);
+        double avgOverlapTotal = calculateAvgOverlap(overlapValuesBestOverlapTotal);
         System.out.printf("Average Overlap value (total): %.4f\n", avgOverlapTotal);
 
 
-
         //return object to add to Summary CSV
-        return new Main.ComparisonResults(matchCount,skippedCount,belowThreshold,skippedThing,avgOverlapMatches,avgOverlapTotal);
+        return new ComparisonResults(matchCount,belowThreshold,skippedClassEmpty,skippedClusterEmpty,skippedClassThing,skippedClusterThing,avgOverlapMatches,avgOverlapTotal);
     }
+
+
+
+
+    static double calculateAvgOverlap(ArrayList<Double> overlapValues) {
+        double total = 0;
+        for (double value : overlapValues) {
+            total = total + value;
+        }
+        return total/overlapValues.size();
+    }
+
 
 
 
@@ -228,11 +246,4 @@ public class Methods {
         return ontIDs;
     }
 
-    static double calculateAvgOverlap(ArrayList<Double> overlapValues) {
-        double total = 0;
-        for (double value : overlapValues) {
-            total = total + value;
-        }
-        return total/overlapValues.size();
-    }
 }
