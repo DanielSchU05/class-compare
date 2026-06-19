@@ -85,9 +85,7 @@ public class Methods {
         ontology.classesInSignature().forEach(cluster -> {
 
             //retrieve all members of the class, inferred and asserted
-            NodeSet<OWLNamedIndividual> instances = reasoner.getInstances(cluster, false);
-            //convert stream to set for saving to map
-            Set<OWLNamedIndividual> individualsSet = instances.entities().collect(Collectors.toSet());
+            Set<OWLNamedIndividual> individualsSet = (reasoner.getInstances(cluster, false)).entities().collect(Collectors.toSet());
 
             //add to map
             clusterDict.put(cluster, individualsSet);
@@ -114,13 +112,12 @@ public class Methods {
         Set<OWLNamedIndividual> intersection = new HashSet<>(individuals1);
         intersection.retainAll(individuals2);
 
-        Set<OWLNamedIndividual> union = new HashSet<>(individuals1);
-        union.addAll(individuals2);
+        int union = individuals1.size() + individuals2.size() - intersection.size();
 
-        return (double) intersection.size() / union.size();
+        return (double) intersection.size() / union;
     }
 
-    static Main.ComparisonResults compareOntologies(
+    static ComparisonResults compareOntologies(
             String ontID,
             Map<OWLClass, Set<OWLNamedIndividual>> map_original,
             Map<OWLClass, Set<OWLNamedIndividual>> map_clustered,
@@ -129,6 +126,7 @@ public class Methods {
 
         System.out.println("\n --- Matching clusters w/ threshold >= " + threshold+" ---\n");
 
+        //instantiate counters for various conditions
         int matchCount = 0;
         int skippedCount = 0;
         int belowThreshold = 0;
@@ -137,6 +135,8 @@ public class Methods {
         ArrayList<Double> overlapValuesTotal = new ArrayList<>();
         ArrayList<Double> overlapValuesMatches = new ArrayList<>();
 
+
+        //loop through each class of the ontology
         for (Map.Entry<OWLClass, Set<OWLNamedIndividual>> entry1 : map_original.entrySet()) {
             OWLClass c1 = entry1.getKey();
             Set<OWLNamedIndividual> individuals1 = entry1.getValue();
@@ -145,7 +145,11 @@ public class Methods {
                 skippedThing++;
                 continue;
             }
+            //if the class of the og ont is empty, skip to the next one, count it
+            //if the class of the og ont is the Thing class, skip, count it
 
+            //for remembering best cluster match for class
+            //loop over each cluster
             for (Map.Entry<OWLClass,Set<OWLNamedIndividual>> entry2 : map_clustered.entrySet()) {
                 OWLClass c2 = entry2.getKey();
                 Set<OWLNamedIndividual> individuals2 = entry2.getValue();
@@ -154,15 +158,20 @@ public class Methods {
                     skippedThing++;
                     continue;
                 }
+                //if the class of the clustered ont is empty, skip to the next one, count it
+                //if the class of the clustered ont is the Thing class, skip, count it
 
                 double overlap = calculateOverlap(individuals1, individuals2);
+                //calculate current overlap between the (inferred + asserted) individuals of the class and cluster
 
                 overlapValuesTotal.add(overlap);
+                //if the Current overlap is larger than the Best overlap so far
 
                 if (overlap >= threshold) {
                     System.out.printf("Overlap: %.2f \n %s (Ont1) <---> %s (Ont2)\n",
                             overlap, c1.getIRI().getShortForm(), c2.getIRI().getShortForm());
                     matchCount++;
+            //check if the BEST cluster can be counted as a match
 
                     overlapValuesMatches.add(overlap);
 
