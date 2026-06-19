@@ -30,8 +30,8 @@ public class Main {
         try(PrintWriter summaryWriter = new PrintWriter(new FileWriter("comparison_summary-"+threshold+".csv"));
             PrintWriter detailsWriter = new PrintWriter(new FileWriter("comparison_details-"+threshold+".csv"))){
 
-            summaryWriter.println("Ontology_ID,Threshold,Original_Clusters_Count,Clustered_Clusters_Count,Matches_Found,Skipped_Empty,Below_Threshold,Skipped_Thing,Avg_Overlap_Matches,Avg_Overlap_Total");
-            detailsWriter.println("Ontology_ID,Original_Cluster,Clustered_Cluster,Overlap_Score");
+            summaryWriter.println("Ontology_ID,Threshold,Original_Class_Count,Clustered_Clusters_Count,Matches_Found,Skipped_Class_Empty,Skipped_Cluster_Empty,Skipped_Class_Thing,Skipped_Cluster_Thing,Below_Threshold,Avg_Overlap_Matches,Avg_Overlap_Total");
+            detailsWriter.println("Ontology_ID,Original_Class,Clustered_Cluster,Overlap_Score");
 
 
 
@@ -64,7 +64,7 @@ public class Main {
                         System.err.println("Clustered ontology not found: " + clusteredPath);
                         if (origFileCheck.exists()) {
                             System.err.println("Clustering failed (timed out/invalid axioms)");
-                            summaryWriter.printf("%s,%.2f,-,-,-,-,-,-,-,-\n", id,threshold);
+                            summaryWriter.printf("%s,%.2f,-,-,-,-,-,-,-,-,-,-\n", id,threshold);
                             System.err.flush();
                             usedOntIds.remove(id);
                             continue;
@@ -76,7 +76,9 @@ public class Main {
 
                     //load onts
                     System.out.println("Loading ontologies...");
+                    System.out.println("Loading original...");
                     OWLOntology originalOntology = Methods.loadOntology(originalPath, manager);
+                    System.out.println("Loading clustered...");
                     OWLOntology clusteredOntology = Methods.loadClusteredOntology(clusteredPath, originalOntology, manager, factory);
 
 
@@ -91,8 +93,9 @@ public class Main {
                     //add to summary csv
                     ComparisonResults results = Methods.compareOntologies(id, map_original, map_clusters, threshold, detailsWriter);
 
-                    summaryWriter.printf("%s,%.2f,%d,%d,%d,%d,%d,%d,%.4f,%.4f\n",
-                            id,threshold,map_original.size(),map_clusters.size(),results.matches,results.skipped,results.belowThreshold,results.skippedThing,results.avgOverlapMatches,results.avgOverlapTotal);
+
+                    summaryWriter.printf("%s,%.2f,%d,%d,%d,%d,%d,%d,%d,%d,%.4f,%.4f\n",
+                            id,threshold,map_original.size(),map_clusters.size(),results.matches,results.skippedClassEmpty,results.skippedClusterEmpty,results.skippedClassThing,results.skippedClusterThing,results.belowThreshold,results.avgOverlapMatches,results.avgOverlapTotal);
 
                     counter++;
                     System.out.println("Progress: "+ counter + "/"+ ontIds.size());
