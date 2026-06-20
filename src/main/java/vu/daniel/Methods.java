@@ -44,23 +44,33 @@ public class Methods {
         //get classes of original ontology
         Set<OWLClass> originalClasses = originalOntology.classesInSignature().collect(Collectors.toSet());
 
-        //filter classes and put into new ontology
-        clusteredOntology.classesInSignature()
+        //retrieve just the clusters
+        Set<OWLClass> newClusters = clusteredOntology.classesInSignature()
                 .filter(owlClass -> !originalClasses.contains(owlClass))
-                .forEach(cluster -> {
-                    //cluster class definition
-                    manager.addAxiom(filteredClusteredOntology, dataFactory.getOWLDeclarationAxiom(cluster));
+                .collect(Collectors.toSet());
 
-                    //retrieve all members
-                    NodeSet<OWLNamedIndividual> instances = reasoner.getInstances(cluster, false);
+        //adds tbox axioms
+        clusteredOntology.logicalAxioms().forEach(axiom -> {
+            if (axiom.classesInSignature().anyMatch(newClusters::contains)) {
+                manager.addAxiom(filteredClusteredOntology, axiom);
+            }
+        });
 
-                    instances.entities().forEach(individual -> {
-                        //declare individual and add class assertion
-                        manager.addAxiom(filteredClusteredOntology, dataFactory.getOWLDeclarationAxiom(individual));
-                        OWLClassAssertionAxiom assertion = dataFactory.getOWLClassAssertionAxiom(cluster, individual);
-                        manager.addAxiom(filteredClusteredOntology, assertion);
+        //filter classes and put into new ontology
+        newClusters.forEach(cluster -> {
+                        //cluster class definition
+                        manager.addAxiom(filteredClusteredOntology, dataFactory.getOWLDeclarationAxiom(cluster));
+
+                        //retrieve all members
+                        NodeSet<OWLNamedIndividual> instances = reasoner.getInstances(cluster, false);
+
+                        //abox and declaration axioms
+                        instances.entities().forEach(individual -> {
+                            manager.addAxiom(filteredClusteredOntology, dataFactory.getOWLDeclarationAxiom(individual));
+                            OWLClassAssertionAxiom assertion = dataFactory.getOWLClassAssertionAxiom(cluster, individual);
+                            manager.addAxiom(filteredClusteredOntology, assertion);
+                        });
                     });
-                });
 
         reasoner.dispose();
 
