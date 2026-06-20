@@ -169,7 +169,11 @@ public class Methods {
                 //if the Current overlap is larger than the Best overlap so far
                 if (currentOverlap > bestOverlap) {
                     bestOverlap = currentOverlap;
-                    System.out.println("\u001B[42mbetter match found FLAG"+"\u001B[0m"+" Current: "+ bestClusterMatch.getIRI().getShortForm()+" ---> "+"Better: "+ c2.getIRI().getShortForm());
+                    if(bestClusterMatch==null){
+                        System.out.println("\u001B[42mbetter match found FLAG"+"\u001B[0m"+" Current: NULL ---> "+"Better: "+ c2.getIRI().getShortForm());
+                    } else {
+                        System.out.println("\u001B[42mbetter match found FLAG"+"\u001B[0m"+" Current: "+ bestClusterMatch.getIRI().getShortForm()+" ---> "+"Better: "+ c2.getIRI().getShortForm());
+                    }
                     bestClusterMatch = c2;
 
                 }
