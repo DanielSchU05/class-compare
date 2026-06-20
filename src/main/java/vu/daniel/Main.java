@@ -30,7 +30,7 @@ public class Main {
         try(PrintWriter summaryWriter = new PrintWriter(new FileWriter("comparison_summary-"+threshold+".csv"));
             PrintWriter detailsWriter = new PrintWriter(new FileWriter("comparison_details-"+threshold+".csv"))){
 
-            summaryWriter.println("Ontology_ID,Threshold,Original_Class_Count,Clustered_Clusters_Count,Matches_Found,Skipped_Class_Empty,Skipped_Cluster_Empty,Skipped_Class_Thing,Skipped_Cluster_Thing,Below_Threshold,Avg_Overlap_Matches,Avg_Overlap_Total");
+            summaryWriter.println("Ontology_ID,Threshold,Original_Class_Count,Clustered_Clusters_Count,Matches_Found,Skipped_Class_Empty,Skipped_Cluster_Empty,Skipped_Class_Thing,Skipped_Cluster_Thing,Below_Threshold,Avg_Overlap_Matches,Avg_Overlap_Total,Original_Entailed_By_Clustered,Clustered_Entailed_By_Original");
             detailsWriter.println("Ontology_ID,Original_Class,Clustered_Cluster,Overlap_Score");
 
 
@@ -81,6 +81,7 @@ public class Main {
                     System.out.println("Loading clustered...");
                     OWLOntology clusteredOntology = Methods.loadClusteredOntology(clusteredPath, originalOntology, manager, factory);
 
+                    double[] logicRatios = Methods.calculateLogicalEntailment(originalOntology,clusteredOntology,factory);
 
                     //extract individuals
                     System.out.println("Extracting individuals from original ontology...");
@@ -93,9 +94,8 @@ public class Main {
                     //add to summary csv
                     ComparisonResults results = Methods.compareOntologies(id, map_original, map_clusters, threshold, detailsWriter);
 
-
-                    summaryWriter.printf("%s,%.2f,%d,%d,%d,%d,%d,%d,%d,%d,%.4f,%.4f\n",
-                            id,threshold,map_original.size(),map_clusters.size(),results.matches,results.skippedClassEmpty,results.skippedClusterEmpty,results.skippedClassThing,results.skippedClusterThing,results.belowThreshold,results.avgOverlapMatches,results.avgOverlapTotal);
+                    summaryWriter.printf("%s,%.2f,%d,%d,%d,%d,%d,%d,%d,%d,%.4f,%.4f,%.4f,%.4f\n",
+                            id,threshold,map_original.size(),map_clusters.size(),results.matches,results.skippedClassEmpty,results.skippedClusterEmpty,results.skippedClassThing,results.skippedClusterThing,results.belowThreshold,results.avgOverlapMatches,results.avgOverlapTotal,logicRatios[0],logicRatios[1]);
 
                     counter++;
                     System.out.println("Progress: "+ counter + "/"+ ontIds.size());

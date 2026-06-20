@@ -1,5 +1,6 @@
 package vu.daniel;
 
+import org.apache.http.client.UserTokenHandler;
 import org.semanticweb.elk.owlapi.ElkReasonerFactory;
 import org.semanticweb.owlapi.apibinding.OWLManager;
 import org.semanticweb.owlapi.model.*;
@@ -231,14 +232,106 @@ public class Methods {
     }
 
 
-
-
     static double calculateAvgOverlap(ArrayList<Double> overlapValues) {
         double total = 0;
         for (double value : overlapValues) {
             total = total + value;
         }
         return total/overlapValues.size();
+    }
+
+
+
+    //return: double array [ratio of clustered|=original, ratio of original|=clustered]
+    static double[] calculateLogicalEntailment(OWLOntology originalOntology, OWLOntology clusteredOntology, OWLReasonerFactory factory) throws InterruptedException {
+        System.out.println("\n --- Calculating logical equivalence ---");
+
+
+        // checking entailment clustered |= original
+        System.out.println("Checking clustered |= original...");
+        OWLReasoner clusteredReasoner = factory.createReasoner(clusteredOntology);
+        if(!clusteredReasoner.isConsistent()) {
+            System.err.println("Clustered ontology is inconsistent. Skipping...");
+            System.err.flush();
+            Thread.sleep(10);
+            clusteredReasoner.dispose();
+            return new double[]{Double.NaN, Double.NaN};
+        }
+
+        int originalAxiomsTotal = 0;
+        int originalAxiomsEntailed = 0;
+
+        List<OWLLogicalAxiom> originalAxioms = originalOntology.logicalAxioms().toList();
+        for (OWLLogicalAxiom axiom : originalAxioms) {
+            originalAxiomsTotal++;
+
+            if(clusteredReasoner.isEntailed(axiom)) {
+                originalAxiomsEntailed++;
+            }
+        }
+        clusteredReasoner.dispose();
+
+
+
+
+        //checking entailment original |= clustered
+        System.out.println("Checking original |= clustered...");
+        OWLReasoner originalReasoner = factory.createReasoner(originalOntology);
+        if(!originalReasoner.isConsistent()) {
+            System.err.println("Original ontology is inconsistent. Skipping...");
+            System.err.flush();
+            Thread.sleep(10);
+            if (originalAxiomsTotal==0){
+                //-1.0 means no axioms
+                return new double[]{-1.0, Double.NaN};
+            } else {
+                return new double[]{(double) originalAxiomsTotal/originalAxiomsEntailed, Double.NaN};
+            }
+        }
+
+        int clusteredAxiomsTotal = 0;
+        int clusteredAxiomsEntailed = 0;
+
+        Set<OWLEntity> originalSignature = originalOntology.signature().collect(Collectors.toSet());
+
+        List<OWLLogicalAxiom> clusteredAxioms = clusteredOntology.logicalAxioms().toList();
+
+        for (OWLLogicalAxiom axiom: clusteredAxioms) {
+            Set<OWLEntity> axiomSignature = axiom.signature().collect(Collectors.toSet());
+
+            if(originalSignature.contains(axiomSignature)) {
+                clusteredAxiomsTotal++;
+                if(originalReasoner.isEntailed(axiom)) {
+                    clusteredAxiomsEntailed++;
+                }
+            }
+        }
+
+        originalReasoner.dispose();
+
+
+
+
+        double originalByClustered = 0;
+        double clusteredByOriginal = 0;
+
+        if (originalAxiomsTotal==0) {
+            originalByClustered = -1;
+        } else {
+            originalByClustered = (double) originalAxiomsTotal/originalAxiomsEntailed;
+        }
+
+        if (clusteredAxiomsTotal==0) {
+            clusteredByOriginal = -1;
+        } else {
+            clusteredByOriginal = (double) clusteredAxiomsTotal/clusteredAxiomsEntailed;
+        }
+
+        System.out.printf("Original axioms preservered in Clustered ontology: %d/%d (%.2f%%)", originalAxiomsEntailed,originalAxiomsTotal, originalByClustered*100);
+        System.out.printf("Clustered axioms in Original ontology: %d/%d (%.2f%%)", clusteredAxiomsEntailed,clusteredAxiomsTotal, clusteredByOriginal*100);
+
+        return new double[]{originalByClustered, clusteredByOriginal};
+
     }
 
 
