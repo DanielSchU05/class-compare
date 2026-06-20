@@ -318,13 +318,13 @@ public class Methods {
         if (originalAxiomsTotal==0) {
             originalByClustered = -1;
         } else {
-            originalByClustered = (double) originalAxiomsTotal/originalAxiomsEntailed;
+            originalByClustered = (double) originalAxiomsEntailed/originalAxiomsTotal;
         }
 
         if (clusteredAxiomsTotal==0) {
             clusteredByOriginal = -1;
         } else {
-            clusteredByOriginal = (double) clusteredAxiomsTotal/clusteredAxiomsEntailed;
+            clusteredByOriginal = (double) clusteredAxiomsEntailed/clusteredAxiomsTotal;
         }
 
         System.out.printf("Original axioms preservered in Clustered ontology: %d/%d (%.2f%%)", originalAxiomsEntailed,originalAxiomsTotal, originalByClustered*100);
