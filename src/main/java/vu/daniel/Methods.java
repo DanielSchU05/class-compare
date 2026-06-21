@@ -322,9 +322,8 @@ public class Methods {
 
         double originalByClustered=0;
 
-        if (originalAxiomsTotal!=0) {
-            originalByClustered = (double) originalAxiomsEntailed/originalAxiomsTotal;
-        }
+        originalByClustered = (double) originalAxiomsEntailed/originalAxiomsTotal;
+
 
 
 
