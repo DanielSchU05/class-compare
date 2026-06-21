@@ -234,7 +234,7 @@ public class Methods {
 
 
     static double calculateAvgOverlap(ArrayList<Double> overlapValues) {
-        double total = 0;
+        double total = 0.0;
         for (double value : overlapValues) {
             total = total + value;
         }

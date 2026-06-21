@@ -7,6 +7,8 @@ import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -26,8 +28,13 @@ public class Main {
         int counter = 0;
 
 
-        try(PrintWriter summaryWriter = new PrintWriter(new FileWriter("comparison_summary-"+threshold+".csv"));
-            PrintWriter detailsWriter = new PrintWriter(new FileWriter("comparison_details-"+threshold+".csv"))){
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd_HH-mm");
+
+        String timestamp = LocalDateTime.now().format(formatter);
+
+
+        try(PrintWriter summaryWriter = new PrintWriter(new FileWriter("comparison_summary-"+threshold+"_"+timestamp+".csv"));
+            PrintWriter detailsWriter = new PrintWriter(new FileWriter("comparison_details-"+threshold+"_"+timestamp+".csv"))){
 
             summaryWriter.println("Ontology_ID,Threshold,Original_Class_Count,Clustered_Clusters_Count,Matches_Found,Skipped_Class_Empty,Skipped_Cluster_Empty,Skipped_Class_Thing,Skipped_Cluster_Thing,Below_Threshold,Avg_Overlap_Matches,Avg_Overlap_Total,Original_Entailed_By_Clustered");
             detailsWriter.println("Ontology_ID,Original_Class,Clustered_Cluster,Overlap_Score");
@@ -63,7 +70,7 @@ public class Main {
                         System.err.println("Clustered ontology not found: " + clusteredPath);
                         if (origFileCheck.exists()) {
                             System.err.println("Clustering failed (timed out/invalid axioms)");
-                            summaryWriter.printf("%s,%.2f,-,-,-,-,-,-,-,-,-,-\n", id,threshold);
+                            summaryWriter.printf("%s,%.2f,-,-,-,-,-,-,-,-,-,-,-\n", id,threshold);
                             System.err.flush();
                             usedOntIds.remove(id);
                             continue;
@@ -84,12 +91,12 @@ public class Main {
                     System.err.flush();
                     System.out.flush();
                     Thread.sleep(10);
-                    String logicRatioString = (logicRatio==0 ? "-" : String.format("%.4f",(logicRatio)));
+                    String logicRatioString = (logicRatio==0.0 ? "-" : String.format("%.4f",(logicRatio)));
 
                     Set<OWLClass> originalClasses = originalOntology.classesInSignature().collect(Collectors.toSet());
 
                     Set<OWLClass> filteredClusters = clusteredOntology.classesInSignature().collect(Collectors.toSet());
-                    filteredClusters.retainAll(originalClasses);
+                    filteredClusters.removeAll(originalClasses);
 
                     //extract individuals
                     System.out.println("\nExtracting individuals from original ontology...");
