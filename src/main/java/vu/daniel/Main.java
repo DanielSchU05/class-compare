@@ -8,8 +8,7 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.util.*;
-
-import vu.daniel.Methods.*;
+import java.util.stream.Collectors;
 
 
 public class Main {
@@ -30,7 +29,7 @@ public class Main {
         try(PrintWriter summaryWriter = new PrintWriter(new FileWriter("comparison_summary-"+threshold+".csv"));
             PrintWriter detailsWriter = new PrintWriter(new FileWriter("comparison_details-"+threshold+".csv"))){
 
-            summaryWriter.println("Ontology_ID,Threshold,Original_Class_Count,Clustered_Clusters_Count,Matches_Found,Skipped_Class_Empty,Skipped_Cluster_Empty,Skipped_Class_Thing,Skipped_Cluster_Thing,Below_Threshold,Avg_Overlap_Matches,Avg_Overlap_Total,Original_Entailed_By_Clustered,Clustered_Entailed_By_Original");
+            summaryWriter.println("Ontology_ID,Threshold,Original_Class_Count,Clustered_Clusters_Count,Matches_Found,Skipped_Class_Empty,Skipped_Cluster_Empty,Skipped_Class_Thing,Skipped_Cluster_Thing,Below_Threshold,Avg_Overlap_Matches,Avg_Overlap_Total,Original_Entailed_By_Clustered");
             detailsWriter.println("Ontology_ID,Original_Class,Clustered_Cluster,Overlap_Score");
 
 
@@ -79,23 +78,33 @@ public class Main {
                     System.out.println("Loading original...");
                     OWLOntology originalOntology = Methods.loadOntology(originalPath, manager);
                     System.out.println("Loading clustered...");
-                    OWLOntology clusteredOntology = Methods.loadClusteredOntology(clusteredPath, originalOntology, manager, factory);
+                    OWLOntology clusteredOntology = Methods.loadOntology(clusteredPath, manager);
 
-                    double[] logicRatios = Methods.calculateLogicalEntailment(originalOntology,clusteredOntology,factory);
+                    double logicRatio = Methods.calculateLogicalEntailment(originalOntology,clusteredOntology,factory);
+                    System.err.flush();
+                    System.out.flush();
+                    Thread.sleep(10);
+                    String logicRatioString = (logicRatio==0 ? "-" : String.format("%.4f",(logicRatio)));
+
+                    Set<OWLClass> originalClasses = originalOntology.classesInSignature().collect(Collectors.toSet());
+
+                    Set<OWLClass> filteredClusters = clusteredOntology.classesInSignature().collect(Collectors.toSet());
+                    filteredClusters.retainAll(originalClasses);
 
                     //extract individuals
-                    System.out.println("Extracting individuals from original ontology...");
-                    Map<OWLClass, Set<OWLNamedIndividual>> map_original = Methods.findIndividuals(originalOntology, factory);
+                    System.out.println("\nExtracting individuals from original ontology...");
+                    Map<OWLClass, Set<OWLNamedIndividual>> map_original = Methods.findIndividuals(originalOntology, originalClasses, factory);
 
                     System.out.println("Extracting individuals from clustered ontology...");
-                    Map<OWLClass, Set<OWLNamedIndividual>> map_clusters = Methods.findIndividuals(clusteredOntology, factory);
+                    Map<OWLClass, Set<OWLNamedIndividual>> map_clusters = Methods.findIndividuals(clusteredOntology, filteredClusters, factory);
 
 
                     //add to summary csv
                     ComparisonResults results = Methods.compareOntologies(id, map_original, map_clusters, threshold, detailsWriter);
 
-                    summaryWriter.printf("%s,%.2f,%d,%d,%d,%d,%d,%d,%d,%d,%.4f,%.4f,%.4f,%.4f\n",
-                            id,threshold,map_original.size(),map_clusters.size(),results.matches,results.skippedClassEmpty,results.skippedClusterEmpty,results.skippedClassThing,results.skippedClusterThing,results.belowThreshold,results.avgOverlapMatches,results.avgOverlapTotal,logicRatios[0],logicRatios[1]);
+
+                    summaryWriter.printf("%s,%.2f,%d,%d,%d,%d,%d,%d,%d,%d,%.4f,%.4f,%s\n",
+                            id,threshold,map_original.size(),map_clusters.size(),results.matches,results.skippedClassEmpty,results.skippedClusterEmpty,results.skippedClassThing,results.skippedClusterThing,results.belowThreshold,results.avgOverlapMatches,results.avgOverlapTotal,logicRatioString);
 
                     counter++;
                     System.out.println("Progress: "+ counter + "/"+ ontIds.size());
