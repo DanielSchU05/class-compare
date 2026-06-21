@@ -87,12 +87,8 @@ public class Main {
                     System.out.println("Loading clustered...");
                     OWLOntology clusteredOntology = Methods.loadOntology(clusteredPath, manager);
 
-                    double logicRatio = Methods.calculateLogicalEntailment(originalOntology,clusteredOntology,factory);
-                    System.err.flush();
-                    System.out.flush();
-                    Thread.sleep(10);
-                    String logicRatioString = (logicRatio==0.0 ? "-" : String.format("%.4f",(logicRatio)));
 
+                    //get individuals to see if there is an abox, otherwise it will skip
                     Set<OWLClass> originalClasses = originalOntology.classesInSignature().collect(Collectors.toSet());
 
                     Set<OWLClass> filteredClusters = clusteredOntology.classesInSignature().collect(Collectors.toSet());
@@ -105,13 +101,24 @@ public class Main {
                     System.out.println("Extracting individuals from clustered ontology...");
                     Map<OWLClass, Set<OWLNamedIndividual>> map_clusters = Methods.findIndividuals(clusteredOntology, filteredClusters, factory);
 
+                    boolean is_Empty = map_original.values().stream().allMatch(Set::isEmpty);
+
+                    if (is_Empty){
+                        continue;
+                    }
+
+                    double logicRatio = Methods.calculateLogicalEntailment(originalOntology,clusteredOntology,factory);
+                    System.err.flush();
+                    System.out.flush();
+                    Thread.sleep(10);
+
 
                     //add to summary csv
                     ComparisonResults results = Methods.compareOntologies(id, map_original, map_clusters, threshold, detailsWriter);
 
 
-                    summaryWriter.printf("%s,%.2f,%d,%d,%d,%d,%d,%d,%d,%d,%.4f,%.4f,%s\n",
-                            id,threshold,map_original.size(),map_clusters.size(),results.matches,results.skippedClassEmpty,results.skippedClusterEmpty,results.skippedClassThing,results.skippedClusterThing,results.belowThreshold,results.avgOverlapMatches,results.avgOverlapTotal,logicRatioString);
+                    summaryWriter.printf("%s,%.2f,%d,%d,%d,%d,%d,%d,%d,%d,%.4f,%.4f,%.4f\n",
+                            id,threshold,map_original.size(),map_clusters.size(),results.matches,results.skippedClassEmpty,results.skippedClusterEmpty,results.skippedClassThing,results.skippedClusterThing,results.belowThreshold,results.avgOverlapMatches,results.avgOverlapTotal,logicRatio);
 
                     counter++;
                     System.out.println("Progress: "+ counter + "/"+ ontIds.size());
