@@ -101,9 +101,10 @@ public class Main {
                     System.out.println("Extracting individuals from clustered ontology...");
                     Map<OWLClass, Set<OWLNamedIndividual>> map_clusters = Methods.findIndividuals(clusteredOntology, filteredClusters, factory);
 
-                    boolean is_Empty = map_original.values().stream().allMatch(Set::isEmpty);
+                    boolean is_Empty_original = map_original.values().stream().allMatch(Set::isEmpty);
+                    boolean is_Empty_clustered = map_clusters.values().stream().allMatch(Set::isEmpty);
 
-                    if (is_Empty){
+                    if (is_Empty_original || is_Empty_clustered ){
                         continue;
                     }
 
