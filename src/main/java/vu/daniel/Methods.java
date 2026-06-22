@@ -3,7 +3,6 @@ package vu.daniel;
 import org.semanticweb.elk.owlapi.ElkReasonerFactory;
 import org.semanticweb.owlapi.apibinding.OWLManager;
 import org.semanticweb.owlapi.model.*;
-import org.semanticweb.owlapi.reasoner.NodeSet;
 import org.semanticweb.owlapi.reasoner.OWLReasoner;
 import org.semanticweb.owlapi.reasoner.OWLReasonerFactory;
 
@@ -244,7 +243,7 @@ public class Methods {
 
 
     //return: double array [ratio of clustered|=original, ratio of original|=clustered]
-    static double calculateLogicalEntailment(OWLOntology originalOntology, OWLOntology clusteredOntology, OWLReasonerFactory factory) throws InterruptedException {
+    static double calculateEntailmentRatio(OWLOntology originalOntology, OWLOntology clusteredOntology, OWLReasonerFactory factory) throws InterruptedException {
         System.out.println("\n --- Calculating logical equivalence ---\n");
 
 

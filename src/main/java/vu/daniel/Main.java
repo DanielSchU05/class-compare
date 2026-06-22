@@ -10,12 +10,16 @@ import java.io.PrintWriter;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 
 public class Main {
 
-    static void main() throws IOException, InterruptedException {
+    static void main() throws IOException {
+        //measure code runtime
+        long startTime = System.nanoTime();
+
         PathNames paths = new PathNames();
 
         //IDs of ontologies to be compared
@@ -33,8 +37,8 @@ public class Main {
         String timestamp = LocalDateTime.now().format(formatter);
 
 
-        try(PrintWriter summaryWriter = new PrintWriter(new FileWriter("comparison_summary-"+threshold+"_"+timestamp+".csv"));
-            PrintWriter detailsWriter = new PrintWriter(new FileWriter("comparison_details-"+threshold+"_"+timestamp+".csv"))){
+        try(PrintWriter summaryWriter = new PrintWriter(new FileWriter("C:\\Users\\Daniel Ujvary\\Documents\\BP\\class-compare\\results_csv\\comparison_summary-"+threshold+"_"+timestamp+".csv"));
+            PrintWriter detailsWriter = new PrintWriter(new FileWriter("C:\\Users\\Daniel Ujvary\\Documents\\BP\\class-compare\\results_csv\\comparison_details-"+threshold+"_"+timestamp+".csv"))){
 
             summaryWriter.println("Ontology_ID,Threshold,Original_Class_Count,Clustered_Clusters_Count,Matches_Found,Skipped_Class_Empty,Skipped_Cluster_Empty,Skipped_Class_Thing,Skipped_Cluster_Thing,Below_Threshold,Avg_Overlap_Matches,Avg_Overlap_Total,Original_Entailed_By_Clustered");
             detailsWriter.println("Ontology_ID,Original_Class,Clustered_Cluster,Overlap_Score");
@@ -64,6 +68,7 @@ public class Main {
                     if(!origFileCheck.exists()) {
                         System.err.println("Original ontology not found: " + originalPath);
                         System.err.flush();
+                        Thread.sleep(10);
                         continue;
                     }
                     if (!clustFileCheck.exists()) {
@@ -84,8 +89,16 @@ public class Main {
                     System.out.println("Loading ontologies...");
                     System.out.println("Loading original...");
                     OWLOntology originalOntology = Methods.loadOntology(originalPath, manager);
+                    System.err.flush();
+                    System.out.flush();
+                    Thread.sleep(10);
+
                     System.out.println("Loading clustered...");
                     OWLOntology clusteredOntology = Methods.loadOntology(clusteredPath, manager);
+                    System.err.flush();
+                    System.out.flush();
+                    Thread.sleep(10);
+
 
 
                     //get individuals to see if there is an abox, otherwise it will skip
@@ -101,14 +114,8 @@ public class Main {
                     System.out.println("Extracting individuals from clustered ontology...");
                     Map<OWLClass, Set<OWLNamedIndividual>> map_clusters = Methods.findIndividuals(clusteredOntology, filteredClusters, factory);
 
-                    boolean is_Empty_original = map_original.values().stream().allMatch(Set::isEmpty);
-                    boolean is_Empty_clustered = map_clusters.values().stream().allMatch(Set::isEmpty);
 
-                    if (is_Empty_original || is_Empty_clustered ){
-                        continue;
-                    }
-
-                    double logicRatio = Methods.calculateLogicalEntailment(originalOntology,clusteredOntology,factory);
+                    double logicRatio = Methods.calculateEntailmentRatio(originalOntology,clusteredOntology,factory);
                     System.err.flush();
                     System.out.flush();
                     Thread.sleep(10);
@@ -123,27 +130,30 @@ public class Main {
 
                     counter++;
                     System.out.println("Progress: "+ counter + "/"+ ontIds.size());
+                    System.err.flush();
+                    System.out.flush();
+                    Thread.sleep(10);
+
 
                 } catch (Exception e) {
                     System.err.println("Error processing ID "+id+": "+ e.getMessage());
                 }
-
             }
         }
 
-        try {
-            FileWriter usedOnts = new FileWriter("used_Ontology_IDs.txt");
-            for (String id : usedOntIds) {
-                usedOnts.write(id+"\n");
-            }
-            usedOnts.close();
-            System.out.println("Successfully wrote used ontology IDs.");
-        } catch (IOException e) {
-            System.err.println("Error occurred while printing used ontology IDs");
-            Thread.sleep(10);
-            System.err.flush();
-            e.printStackTrace();
-        }
+//        try {
+//            FileWriter usedOnts = new FileWriter("used_Ontology_IDs.txt");
+//            for (String id : usedOntIds) {
+//                usedOnts.write(id+"\n");
+//            }
+//            usedOnts.close();
+//            System.out.println("Successfully wrote used ontology IDs.");
+//        } catch (IOException e) {
+//            System.err.println("Error occurred while printing used ontology IDs");
+//            Thread.sleep(10);
+//            System.err.flush();
+//            e.printStackTrace();
+//        }
 
 
         System.out.println("\n--- Finished processing batch ---\n");
@@ -183,11 +193,15 @@ public class Main {
 //        compareOntologies(map_original, map1_clusters, threshold);
 
 
+        long estimatedTime = System.nanoTime()-startTime;
+        long timeSeconds = TimeUnit.NANOSECONDS.toSeconds(estimatedTime);
+        long hours = timeSeconds/3600;
+        long mins = (timeSeconds%3600)/60;
+        long secs = timeSeconds%60;
+
+        System.out.printf("Ran for %d:%d:%d",hours,mins,secs);
+
 
         System.out.println("\n\n---FINISHED---");
     }
-
-
-
-
 }
