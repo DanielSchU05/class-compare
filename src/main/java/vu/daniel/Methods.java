@@ -3,6 +3,7 @@ package vu.daniel;
 import org.semanticweb.elk.owlapi.ElkReasonerFactory;
 import org.semanticweb.owlapi.apibinding.OWLManager;
 import org.semanticweb.owlapi.model.*;
+import org.semanticweb.owlapi.reasoner.Node;
 import org.semanticweb.owlapi.reasoner.OWLReasoner;
 import org.semanticweb.owlapi.reasoner.OWLReasonerFactory;
 
@@ -89,6 +90,8 @@ public class Methods {
         OWLReasoner reasoner = reasonerFactory.createReasoner(ontology);
 
         Map<OWLClass, Set<OWLNamedIndividual>> clusterDict = new HashMap<>();
+
+        targetClasses.removeIf(c -> c.isOWLThing() || c.isOWLNothing());
 
         System.out.println("Nr of clusters: " + targetClasses.size());
 
@@ -215,10 +218,10 @@ public class Methods {
             System.out.println("No matches found above the threshold.");
         }
 
-        System.out.println("Skipped (empty class): " + skippedClassEmpty+"\n");
-        System.out.println("Skipped (empty cluster): " + skippedClusterEmpty+"\n");
-        System.out.println("Skipped (below threshold): "+ belowThreshold+"\n");
-        System.out.println("Skipped (Thing class): "+ skippedClassThing+"\n");
+        System.out.println("Skipped (empty class): " + skippedClassEmpty);
+        System.out.println("Skipped (empty cluster): " + skippedClusterEmpty);
+        System.out.println("Skipped (below threshold): "+ belowThreshold);
+        System.out.println("Skipped (Thing class): "+ skippedClassThing);
         System.out.println("Skipped (Thing cluster): "+ skippedClusterThing+"\n");
 
         double avgOverlapMatches = calculateAvgOverlap(overlapValuesBestMatches);
@@ -242,101 +245,82 @@ public class Methods {
 
 
 
-    //return: double array [ratio of clustered|=original, ratio of original|=clustered]
-    static double calculateEntailmentRatio(OWLOntology originalOntology, OWLOntology clusteredOntology, OWLReasonerFactory factory) throws InterruptedException {
+    //return: double array [ratio,totalClasses,totalEquivalentClasses]
+    static double[] calculateLogicalEquivalence(OWLOntology originalOntology, OWLOntology clusteredOntology, OWLReasonerFactory factory) throws InterruptedException {
         System.out.println("\n --- Calculating logical equivalence ---\n");
 
+        OWLOntologyManager manager = loadManager();
+        OWLOntology mergedOntology;
 
-        // checking entailment clustered |= original
-        System.out.println("Checking clustered |= original...");
-        OWLReasoner clusteredReasoner = factory.createReasoner(clusteredOntology);
-        if(!clusteredReasoner.isConsistent()) {
+        //merge ontologies so they have axioms from both ontologies
+        try {
+            System.out.println("Merging ontologies...");
+            System.out.flush();
+            Thread.sleep(5);
+
+            mergedOntology = manager.createOntology();
+
+            originalOntology.axioms().forEach(axiom -> manager.addAxiom(mergedOntology, axiom));
+            clusteredOntology.axioms().forEach(axiom -> manager.addAxiom(mergedOntology, axiom));
+
+        } catch (OWLOntologyCreationException e) {
+            System.err.println("Failed to create merged ontology: " + e.getMessage());
+            return new double[]{Double.NaN,Double.NaN,Double.NaN};
+        }
+
+        // checking logical equivalence
+        System.out.println("Checking clusters equivalent to classes...");
+
+        OWLReasoner mergedReasoner = factory.createReasoner(mergedOntology);
+        if(!mergedReasoner.isConsistent()) {
             System.err.println("Clustered ontology is inconsistent. Skipping...");
-            clusteredReasoner.dispose();
-            return Double.NaN;
+            mergedReasoner.dispose();
+            return new double[]{Double.NaN,Double.NaN,Double.NaN};
         }
         System.err.flush();
         System.out.flush();
         Thread.sleep(2);
 
-        int originalAxiomsTotal = 0;
-        int originalAxiomsEntailed = 0;
+        //get all classes from original ontology
+        Set<OWLClass> originalClasses = originalOntology.classesInSignature().collect(Collectors.toSet());
+        //get cluster
+        Set<OWLClass> clusters = clusteredOntology.classesInSignature()
+                .filter(c -> !originalClasses.contains(c))
+                .collect(Collectors.toSet());
 
-        List<OWLLogicalAxiom> originalAxioms = originalOntology.logicalAxioms().toList();
-        for (OWLLogicalAxiom axiom : originalAxioms) {
-            originalAxiomsTotal++;
+        int originalClassesTotal = 0;
+        int originalClassesEquivalentToCluster = 0;
+
+        for (OWLClass originalClass : originalClasses) {
+            //skip Thing classes
+            if (originalClass.isOWLThing() || originalClass.isOWLNothing()) { continue; }
+
+            originalClassesTotal++;
+
             try {
-                if(clusteredReasoner.isEntailed(axiom)) {
-                    originalAxiomsEntailed++;
+                Node<OWLClass> equivalentClasses = mergedReasoner.getEquivalentClasses(originalClass);
+
+                if (equivalentClasses.entities().anyMatch(clusters::contains)) {
+                    originalClassesEquivalentToCluster++;
                 }
             } catch (Exception e) {
                 //ignore what ELK doesn't support
             }
         }
-        clusteredReasoner.dispose();
+        mergedReasoner.dispose();
 
 
+        double equivalenceRatio=0;
+
+        if(originalClassesTotal!=0) {
+            equivalenceRatio = (double) originalClassesEquivalentToCluster /originalClassesTotal;
+        }
 
 
-//        //checking entailment original |= clustered
-//        System.out.println("Checking original |= clustered...");
-//        OWLReasoner originalReasoner = factory.createReasoner(originalOntology);
-//        if(!originalReasoner.isConsistent()) {
-//            System.err.println("Original ontology is inconsistent. Skipping...");
-//
-//            if (originalAxiomsTotal==0){
-//                //-1.0 means no axioms
-//                return new double[]{0, Double.NaN};
-//            } else {
-//                return new double[]{(double) originalAxiomsEntailed/originalAxiomsTotal, Double.NaN};
-//            }
-//        }
-
-//        int clusteredAxiomsTotal = 0;
-//        int clusteredAxiomsEntailed = 0;
-//
-//        Set<OWLEntity> originalSignature = originalOntology.signature().collect(Collectors.toSet());
-//
-//        List<OWLLogicalAxiom> clusteredAxioms = clusteredOntology.logicalAxioms().toList();
-//
-//        for (OWLLogicalAxiom axiom: clusteredAxioms) {
-//            Set<OWLEntity> axiomSignature = axiom.signature().collect(Collectors.toSet());
-//
-//            try {
-//                if(originalSignature.contains(axiomSignature)) {
-//                    clusteredAxiomsTotal++;
-//                    if(originalReasoner.isEntailed(axiom)) {
-//                        clusteredAxiomsEntailed++;
-//                    }
-//                }
-//            } catch (Exception e) {
-//                //ignore unsupported
-//            }
-//        }
-//
-//        originalReasoner.dispose();
+        System.out.printf("\nOriginal classes logically equivalent to a cluster: %d/%d (%.2f%%)\n", originalClassesEquivalentToCluster,originalClassesTotal,equivalenceRatio*100);
 
 
-
-
-        double originalByClustered=0;
-
-        originalByClustered = (double) originalAxiomsEntailed/originalAxiomsTotal;
-
-
-
-
-//        if (clusteredAxiomsTotal==0) {
-//            clusteredByOriginal = -1;
-//        } else {
-//            clusteredByOriginal = (double) clusteredAxiomsEntailed/clusteredAxiomsTotal;
-//        }
-
-        System.out.printf("\nOriginal axioms preservered in Clustered ontology: %d/%d (%.2f%%)\n", originalAxiomsEntailed,originalAxiomsTotal, originalByClustered*100);
-//        System.out.printf("Clustered axioms in Original ontology: %d/%d (%.2f%%)\n", clusteredAxiomsEntailed,clusteredAxiomsTotal, clusteredByOriginal*100);
-
-        return originalByClustered;
-
+        return new double[]{equivalenceRatio,originalClassesTotal,originalClassesEquivalentToCluster};
     }
 
 
