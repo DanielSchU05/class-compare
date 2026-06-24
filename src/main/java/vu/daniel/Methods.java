@@ -176,6 +176,9 @@ public class Methods {
                 if (individuals2.isEmpty()) { skippedClusterEmpty++; continue; }
                 //if the class of the clustered ont is the Thing class, skip, count it
                 if (Objects.equals(c2.getIRI().getShortForm(),"Thing")) { skippedClusterThing++; continue; }
+                //skip if individuals1 and individuals2 share no instances
+                if (Collections.disjoint(individuals1,individuals2)) { continue; }
+
 
                 //calculate current overlap between the (inferred + asserted) individuals of the class and cluster
                 double currentOverlap = calculateOverlap(individuals1, individuals2);
@@ -187,22 +190,26 @@ public class Methods {
                 }
             }
 
-            //check if the BEST cluster can be counted as a match
-            if (bestOverlap >= threshold) {
-                System.out.printf("Overlap: %.2f \n %s (Ont1) <---> %s (Ont2)\n",
-                        bestOverlap, c1.getIRI().getShortForm(), bestClusterMatch.getIRI().getShortForm());
-                matchCount++;
+           //skip if no match was found (only look at relevant comparisons)
+            if (bestClusterMatch != null) {
 
-                overlapValuesBestMatches.add(bestOverlap);
+                //check if the BEST cluster can be counted as a match
+                if (bestOverlap >= threshold) {
+                    System.out.printf("Overlap: %.2f \n %s (Ont1) <---> %s (Ont2)\n",
+                            bestOverlap, c1.getIRI().getShortForm(), bestClusterMatch.getIRI().getShortForm());
+                    matchCount++;
 
-                //write to detailed CSV
-                detailsWriter.printf("%s,%s,%s,%.4f\n",
-                        ontID,c1.getIRI().getShortForm(),bestClusterMatch.getIRI().getShortForm(),bestOverlap);
+                    overlapValuesBestMatches.add(bestOverlap);
 
-            } else if (bestOverlap < threshold) {
-                belowThreshold++;
+                    //write to detailed CSV
+                    detailsWriter.printf("%s,%s,%s,%.4f\n",
+                            ontID,c1.getIRI().getShortForm(),bestClusterMatch.getIRI().getShortForm(),bestOverlap);
+
+                } else if (bestOverlap < threshold) {
+                    belowThreshold++;
+                }
+                overlapValuesBestOverlapTotal.add(bestOverlap);
             }
-            overlapValuesBestOverlapTotal.add(bestOverlap);
         }
 
 
