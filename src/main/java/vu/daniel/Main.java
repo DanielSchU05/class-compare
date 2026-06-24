@@ -27,7 +27,7 @@ public class Main {
         ArrayList<String> usedOntIds = new ArrayList<>(ontIds);
 
         //set threshold for comparison
-        double threshold = 0.9;
+        double threshold = 0.75;
 
         int counter = 0;
 
@@ -37,10 +37,18 @@ public class Main {
         String timestamp = LocalDateTime.now().format(formatter);
 
 
-        try(PrintWriter summaryWriter = new PrintWriter(new FileWriter("C:\\Users\\Daniel Ujvary\\Documents\\BP\\class-compare\\results_csv\\comparison_summary-"+threshold+"_"+timestamp+".csv"));
-            PrintWriter detailsWriter = new PrintWriter(new FileWriter("C:\\Users\\Daniel Ujvary\\Documents\\BP\\class-compare\\results_csv\\comparison_details-"+threshold+"_"+timestamp+".csv"))){
+        try(PrintWriter summaryWriterPrecision = new PrintWriter(new FileWriter(paths.getSummaryWriterPath()+"comparison_summary-"+threshold+"-precision_"+timestamp+".csv"));
+            PrintWriter summaryWriterRecall = new PrintWriter(new FileWriter(paths.getSummaryWriterPath()+"comparison_summary-"+threshold+"-recall_"+timestamp+".csv"));
+            PrintWriter detailsWriter = new PrintWriter(new FileWriter(paths.getDetailsWriterPath()+"comparison_details-"+threshold+"_"+timestamp+".csv"))){
 
-            summaryWriter.println("Ontology_ID,Threshold,Original_Class_Count,Clustered_Clusters_Count,Matches_Found,Skipped_Class_Empty,Skipped_Cluster_Empty,Skipped_Class_Thing,Skipped_Cluster_Thing,Below_Threshold,Avg_Overlap_Matches,Avg_Overlap_Total,Original_Entailed_By_Clustered");
+            String csv_header = "Ontology_ID,Threshold,Total_Classes,Total_Clusters,Matches_Found,Metric_Score,Avg_Overlap_Matches,Avg_Overlap_Total,Logical_Equivalence_Ratio,Total_Original_Classes,Total_Classes_Equivalent_to_Cluster,Skipped_Class_Empty,Skipped_Cluster_Empty,Skipped_Class_Thing,Skipped_Cluster_Thing,Below_Threshold";
+
+            //Clustered --> Original (For each cluster, which 1 single class matches it best)
+            summaryWriterPrecision.println(csv_header);
+
+            //Original --> Clustered (how much of the original is covered in the clusters)
+            summaryWriterRecall.println(csv_header);
+
             detailsWriter.println("Ontology_ID,Original_Class,Clustered_Cluster,Overlap_Score");
 
 
@@ -75,8 +83,11 @@ public class Main {
                         System.err.println("Clustered ontology not found: " + clusteredPath);
                         if (origFileCheck.exists()) {
                             System.err.println("Clustering failed (timed out/invalid axioms)");
-                            summaryWriter.printf("%s,%.2f,-,-,-,-,-,-,-,-,-,-,-\n", id,threshold);
+
+                            summaryWriterPrecision.printf("%s,%.2f,-,-,-,-,-,-,-,-,-,-,-,-,-,-\n", id,threshold);
+                            summaryWriterRecall.printf("%s,%.2f,-,-,-,-,-,-,-,-,-,-,-,-,-,-\n", id,threshold);
                             System.err.flush();
+
                             usedOntIds.remove(id);
                             continue;
                         }
@@ -115,21 +126,44 @@ public class Main {
                     Map<OWLClass, Set<OWLNamedIndividual>> map_clusters = Methods.findIndividuals(clusteredOntology, filteredClusters, factory);
 
 
-                    double logicRatio = Methods.calculateEntailmentRatio(originalOntology,clusteredOntology,factory);
+                    double[] logicRatio = Methods.calculateLogicalEquivalence(originalOntology,clusteredOntology,factory);
                     System.err.flush();
                     System.out.flush();
                     Thread.sleep(10);
 
 
-                    //add to summary csv
-                    ComparisonResults results = Methods.compareOntologies(id, map_original, map_clusters, threshold, detailsWriter);
+                    //Calculate Precision (Clustered -> Original) (how many of the clustered is correct)
+                    System.out.println("\n  ===== Calculating Precision =====");
+                    ComparisonResults resultsPrecision = Methods.compareOntologies(id, map_clusters, map_original, threshold, detailsWriter, "Precision");
+
+                    //Calculate Recall (Original -> Clustered) (how many of the correct were found in cluster)
+                    System.out.println("\n  ===== Calculating Recall =====");
+                    ComparisonResults resultsRecall = Methods.compareOntologies(id, map_original, map_clusters, threshold, detailsWriter, "Recall");
+
+                    double precisionScore;
+                    if (map_clusters.isEmpty()) { precisionScore = 0.0; } else { precisionScore = (double) resultsPrecision.matches /map_clusters.size(); }
+
+                    double recallScore;
+                    if (map_original.isEmpty()) { recallScore = 0.0; } else { recallScore = (double) resultsRecall.matches /map_original.size(); }
 
 
-                    summaryWriter.printf("%s,%.2f,%d,%d,%d,%d,%d,%d,%d,%d,%.4f,%.4f,%.4f\n",
-                            id,threshold,map_original.size(),map_clusters.size(),results.matches,results.skippedClassEmpty,results.skippedClusterEmpty,results.skippedClassThing,results.skippedClusterThing,results.belowThreshold,results.avgOverlapMatches,results.avgOverlapTotal,logicRatio);
+                    //add results to PRECISION csv
+                    summaryWriterPrecision.printf("%s,%.2f,%d,%d,%d,%.4f,%.4f,%.4f,%.4f,%.0f,%.0f,%d,%d,%d,%d,%d\n",
+                            id, threshold, map_original.size(), map_clusters.size(),
+                            resultsPrecision.matches, precisionScore, resultsPrecision.avgOverlapMatches, resultsPrecision.avgOverlapTotal,
+                            logicRatio[0], logicRatio[1], logicRatio[2],
+                            resultsPrecision.skippedClassEmpty, resultsPrecision.skippedClusterEmpty, resultsPrecision.skippedClassThing, resultsPrecision.skippedClusterThing, resultsPrecision.belowThreshold);
+
+                    //add results to RECALL csv
+                    summaryWriterRecall.printf("%s,%.2f,%d,%d,%d,%.4f,%.4f,%.4f,%.4f,%.0f,%.0f,%d,%d,%d,%d,%d\n",
+                            id, threshold, map_original.size(), map_clusters.size(),
+                            resultsRecall.matches, recallScore, resultsRecall.avgOverlapMatches, resultsRecall.avgOverlapTotal,
+                            logicRatio[0], logicRatio[1], logicRatio[2],
+                            resultsRecall.skippedClassEmpty, resultsRecall.skippedClusterEmpty, resultsRecall.skippedClassThing, resultsRecall.skippedClusterThing, resultsRecall.belowThreshold);
+
 
                     counter++;
-                    System.out.println("Progress: "+ counter + "/"+ ontIds.size());
+                    System.out.println("Progress: "+ counter + "/"+ ontIds.size()+"\n\n\n");
                     System.err.flush();
                     System.out.flush();
                     Thread.sleep(10);
