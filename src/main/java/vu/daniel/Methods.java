@@ -4,6 +4,7 @@ import org.semanticweb.elk.owlapi.ElkReasonerFactory;
 import org.semanticweb.owlapi.apibinding.OWLManager;
 import org.semanticweb.owlapi.model.*;
 import org.semanticweb.owlapi.reasoner.Node;
+ import org.semanticweb.owlapi.reasoner.NodeSet;
 import org.semanticweb.owlapi.reasoner.OWLReasoner;
 import org.semanticweb.owlapi.reasoner.OWLReasonerFactory;
 
@@ -84,7 +85,8 @@ public class Methods {
             Map<OWLClass, Set<OWLNamedIndividual>> map_original,
             Map<OWLClass, Set<OWLNamedIndividual>> map_clustered,
             double threshold,
-            PrintWriter detailsWriter) {
+            PrintWriter detailsWriter,
+            String metricType) {
 
         System.out.println("\n --- Matching clusters w/ threshold >= " + threshold+" ---\n");
 
@@ -150,8 +152,8 @@ public class Methods {
                     overlapValuesBestMatches.add(bestOverlap);
 
                     //write to detailed CSV
-                    detailsWriter.printf("%s,%s,%s,%.4f\n",
-                            ontID,c1.getIRI().getShortForm(),bestClusterMatch.getIRI().getShortForm(),bestOverlap);
+                    detailsWriter.printf("%s,%s,%s,%s,%.4f\n",
+                            ontID,metricType,c1.getIRI().getShortForm(),bestClusterMatch.getIRI().getShortForm(),bestOverlap);
 
                 } else if (bestOverlap < threshold) {
                     belowThreshold++;
