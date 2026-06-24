@@ -49,7 +49,7 @@ public class Main {
             //Original --> Clustered (how much of the original is covered in the clusters)
             summaryWriterRecall.println(csv_header);
 
-            detailsWriter.println("Ontology_ID,Original_Class,Clustered_Cluster,Overlap_Score");
+            detailsWriter.println("Ontology_ID,Metric_Type,Original_Class,Clustered_Cluster,Overlap_Score");
 
 
 
